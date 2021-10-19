@@ -20,7 +20,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'continuous-distribution') ||
       github.event.label.name == 'instant-deployment'
     steps:
-      - run: echo '条件分岐用の空ジョブ'
+      - run: echo '通常必要のないサービス分岐のためのジョブ'
   example-deploygate:
     runs-on: ubuntu-latest
     needs:
