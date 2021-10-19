@@ -28,12 +28,12 @@ jobs:
     if: >
       contains(github.event.pull_request.labels.*.name, 'deploygate')
     steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/after-checkout
       - if: github.event.label.name == 'instant-deployment'
         run: gh pr edit '${{ github.event.number }}' --remove-label "instant-deployment"
         env:
           GH_TOKEN: ${{ github.token }}
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/after-checkout
       - uses: actions/setup-java@v2
         with:
           distribution: adopt
