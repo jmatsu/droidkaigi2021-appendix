@@ -31,7 +31,8 @@ runs:
         ${{ inputs.body }}
         EOF
       shell: bash
-    - uses: actions/cache@v2
+    - id: cache
+      uses: actions/cache@v2
       with:
         path: |
           ${{ steps.create-body-file.outputs.lock-path }}
