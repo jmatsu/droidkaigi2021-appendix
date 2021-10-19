@@ -1,0 +1,47 @@
+name: '対象 pr でそのコメントを高々1回しかコメントしないAction'
+description: 'ditto'
+author: '@jmatsu'
+inputs:
+  id:
+    required: true
+    description: 'コメントを識別するための id'
+  pull-number:
+    required: true
+    description: 'PR 番号'
+  body:
+    required: true
+    description: 'コメント内容'
+  github-token:
+    required: true
+    description: '認証トークン'
+    default: ${{ github.token }}
+runs:
+  using: 'composite'
+  steps:
+    - id: create-body-file
+      run: |
+        readonly path="./tmp/${{ inputs.id }}/${{ inputs.pull-number }}/body.json"
+
+        mkdir -p "$(dirname "${path}")"
+
+        echo "::set-output name=path::${path}"
+        echo "::set-output name=lock-path::${path}.locked"
+
+        cat<<EOF > "${path}"
+        ${{ inputs.body }}
+        EOF
+      shell: bash
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ${{ steps.create-body-file.outputs.lock-path }}
+        key: actions-pctpoo-${{ inputs.id }}-${{ inputs.pull-number }}-${{ hashFiles(steps.create-body-file.outputs.path) }}
+    - run: |
+        if [[ '${{ steps.cache.outputs.cache-hit }}' != 'true' ]]; then
+          gh pr comment '${{ inputs.pull-number }}' -F '${{ steps.create-body-file.outputs.path }}'
+          touch '${{ steps.create-body-file.outputs.lock-path }}'
+        fi
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+

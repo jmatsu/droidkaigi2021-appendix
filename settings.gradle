@@ -1,0 +1,2 @@
+rootProject.name = "DroidKaigi 2021 Samples"
+include ':app'

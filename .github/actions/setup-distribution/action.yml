@@ -1,0 +1,32 @@
+name: '配信方法を設定するための Action'
+description: 'ditto'
+author: '@jmatsu'
+inputs:
+  pull-number:
+    required: true
+    description: 'PR 番号'
+  service:
+    required: true
+    description: 'deploygate, firebase-app-distribution のいずれか'
+  github-token:
+    required: true
+    description: '認証トークン'
+    default: ${{ github.token }}
+runs:
+  using: 'composite'
+  steps:
+    - id: remove-labels
+      uses: actions/github-script@v5
+      with:
+        script: |
+          const services = [
+            'deploygate',
+            'firebase-app-distribution'
+          ];
+
+          return services.filter((s) => s !== '${{ inputs.service }}')
+    - run: gh pr edit '${{ inputs.pull-number }}' --add-label '${{ inputs.service }},continuous-distribution' --remove-label '${{ join(fromJSON(steps.remove-labels.outputs.result), ',') }}'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+

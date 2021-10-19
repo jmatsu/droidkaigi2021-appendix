@@ -1,0 +1,28 @@
+name: setup-cd
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        required: true
+        default: deploygate or firebase-app-distribution
+        description: 配布サービスの選択
+      pull-number:
+        required: true
+        description: 配布を開始するPR番号
+      ref:
+        required: false
+        description: 利用するコードの ref
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+      - uses: ./.github/actions/after-checkout
+      - uses: ./.github/actions/setup-distribution
+        with:
+          service: ${{ github.event.inputs.service }}
+          pull-number: ${{ github.event.inputs.pull-number }}

@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+
+  : # no op
+}
+
+initialize_colors() {
+  NOFORMAT='' RED='' GREEN='' YELLOW=''
+}
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[1;33m'
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+info() {
+  msg "${GREEN}$1${NOFORMAT}"
+}
+
+warn() {
+  msg "${YELLOW}$1${NOFORMAT}"
+}
+
+err() {
+  msg "${RED}$1${NOFORMAT}"
+}
+
+die() {
+  err "${1-}"
+  exit "${2-}"
+}
+
+exec() {
+  cleanup
+  command exec "$@"
+}
+
+parse_params() {
+  _MAX_ATTEMPT_COUNT_=10
+  _SLEEP_SECONDS_=1
+
+  while :; do
+    case "${1-}" in
+    -m | --max)
+      _MAX_ATTEMPT_COUNT_="${2-}"
+      shift
+      ;;
+    -s | --sleep)
+      _SLEEP_SECONDS_="${2-}"
+      shift
+      ;;
+    -?*) die "Unknown option: $1" ;;
+    *) break ;;
+    esac
+
+    shift
+  done
+
+  [[ -z "${_MAX_ATTEMPT_COUNT_-}" ]] && die "Missing required parameter: --max"
+  [[ -z "${_SLEEP_SECONDS_-}" ]] && die "Missing required parameter: --sleep"
+
+  args=("$@")
+
+  return 0
+}
+
+retry_until() {
+  local -r args=("$@")
+
+  for _ in $(seq 1 "${_MAX_ATTEMPT_COUNT_}"); do
+    if eval "${args[@]}"; then
+      info "Successfully executed"
+      exit 0
+    fi
+
+    echo >&2 -en "${YELLOW}.${NOFORMAT}"
+    sleep "${_SLEEP_SECONDS_}"
+  done
+
+  die "Retry count has exceeded"
+}
+
+initialize_colors
+parse_params "$@"
+setup_colors
+
+retry_until "${args[@]}"

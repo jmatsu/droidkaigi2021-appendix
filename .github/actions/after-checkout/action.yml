@@ -1,0 +1,10 @@
+name: '初期化周りのDRY'
+description: 'ditto'
+author: '@jmatsu'
+runs:
+  using: 'composite'
+  steps:
+    - run: echo '${{ github.workspace }}/.ci/bin' >> $GITHUB_PATH
+      shell: bash
+    - run: which pxy # make sure
+      shell: bash

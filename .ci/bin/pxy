@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+cleanup() {
+  trap - SIGINT SIGTERM ERR EXIT
+
+  : # no op
+}
+
+initialize_colors() {
+  NOFORMAT='' RED='' GREEN='' YELLOW=''
+}
+
+setup_colors() {
+  if [[ -t 2 ]] && [[ "${TERM-}" != "dumb" ]]; then
+    NOFORMAT='\033[0m' RED='\033[0;31m' GREEN='\033[0;32m' YELLOW='\033[1;33m'
+  fi
+}
+
+msg() {
+  echo >&2 -e "${1-}"
+}
+
+info() {
+  msg "${GREEN}$1${NOFORMAT}"
+}
+
+warn() {
+  msg "${YELLOW}$1${NOFORMAT}"
+}
+
+err() {
+  msg "${RED}$1${NOFORMAT}"
+}
+
+die() {
+  err "${1-}"
+  exit "${2-}"
+}
+
+exec() {
+  cleanup
+  command exec "$@"
+}
+
+parse_params() {
+  return 0
+}
+
+gh::output() {
+  echo "::set-output name=result::$*" >&2
+}
+
+circleci::log() {
+  echo "$*" >&2
+}
+
+initialize_colors
+parse_params "$@"
+setup_colors
+
+if [[ -n "${GITHUB_ACTIONS-}" ]]; then
+  gh::output "$*"
+elif [[ -n "${CIRCLECI-}" ]]; then
+  circleci::log "$*"
+fi
+
+exec "$@"

@@ -1,0 +1,87 @@
+name: pre-release-qa-examples
+
+on:
+  push:
+    branches:
+      - 'release/*'
+
+concurrency: 
+  group: pre-release-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  example-deploygate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/after-checkout
+      - uses: actions/setup-java@v2
+        with:
+          distribution: adopt
+          java-version: 8
+          cache: gradle
+      - id: build
+        run: pxy ./gradlew bundleDebug
+      - id: find-artifact
+        run: echo "::set-output name=result::$(find app/build/outputs -name "*.aab" -type f | head -1)"
+      - id: upload
+        uses: jmatsu/dg-upload-app-action@v0.2
+        with:
+          app_owner_name: red_fat_daruma
+          api_token: ${{ secrets.DEPLOYGATE_API_TOKEN }}
+          app_file_path: ${{ format('{0}/{1}', github.workspace, steps.find-artifact.outputs.result) }}
+          message: |
+            Ran ${{ steps.build.outputs.result }} on ${{ github.ref }} / ${{ github.sha }}
+            ${{ github.event.head_commit.message }}
+            Built by ${{ github.event.pusher.name }} through Actions for RC distribution
+          distribution_find_by: name
+          distribution_id: "pre-release-qa"
+      - uses: slackapi/slack-github-action@v1.14.0
+        with:
+          channel-id: dummy-value
+          slack-message: |
+            <@qa_ug_id>
+            new RC of ${{ steps.upload.outputs.package_name }} is available.
+            `${{ github.event.head_commit.message }}`
+
+            Rev. #$(cat ${{ steps.upload.outputs.response_json_path }} | jq -r '.results.revision')
+            Install via ${{ steps.upload.outputs.distribution_url }}
+        env:
+          SLACK_BOT_TOKEN: dummy-value
+
+  example-firebase-app-distribution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/after-checkout
+      - uses: actions/setup-java@v2
+        with:
+          distribution: adopt
+          java-version: 8
+          cache: gradle
+      - id: build
+        run: pxy ./gradlew assembleDebug
+      - id: find-artifact
+        run: echo "::set-output name=result::$(find app/build/outputs -name "*.apk" -type f | head -1)"
+      - id: upload
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.DEBUG_VARIANT_APP_ID }}
+          token: ${{ secrets.FIREBASE_CLI_TOKEN }}
+          groups: pre-release-qa
+          file: ${{ format('{0}/{1}', github.workspace, steps.find-artifact.outputs.result) }}
+          releaseNotes: |
+            Ran ${{ steps.build.outputs.result }} on ${{ github.ref }} / ${{ github.sha }}
+            ${{ github.event.head_commit.message }}
+            Built by ${{ github.event.pusher.name }} through Actions for RC distribution
+      - uses: slackapi/slack-github-action@v1.14.0
+        with:
+          channel-id: dummy-value
+          slack-message: |
+            <@qa_ug_id>
+            new RC of ${{ steps.upload.outputs.package_name }} is available.
+            `${{ github.event.head_commit.message }}`
+
+            Install via firebase app distribution
+        env:
+          SLACK_BOT_TOKEN: dummy-value
